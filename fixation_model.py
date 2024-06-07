@@ -7,7 +7,7 @@ import pickle
 import pandas as pd
 
 
-kernel = "poly"
+kernel = "rbf"
 
 
 def load_coordinates(file_name):
