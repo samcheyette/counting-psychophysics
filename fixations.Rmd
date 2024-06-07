@@ -1,0 +1,138 @@
+---
+title: "fixations"
+author: "Sam"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,fig.width=5, fig.height=3.75,fig.align = "center",cache=TRUE)
+```
+
+```{r, include=FALSE, echo=FALSE}
+
+library(ggplot2)
+library(reshape)
+library(grid)
+library(dplyr)
+library(gridExtra)
+library(lme4)
+library(reghelper)
+library(RColorBrewer)
+library(robustbase)
+library(latex2exp)
+library(tidyr)
+library(readr)
+library(stringr)
+library(viridis)
+
+
+paper_theme <- theme_light() + theme( axis.title.x = element_text(size=18),
+                                      axis.text.x=element_text(
+                                        size = 16), 
+                                      axis.title.y = element_text(size = 18, vjust = 1),
+                                      axis.text.y  = element_text(size = 16),
+                             strip.text=element_text(size=16),
+                                      axis.line.x = element_line(colour = "black"), 
+                                      axis.line.y = element_line(colour = "black"),
+                                      legend.title=element_text(size=14),
+                                      legend.text=element_text(size=12),
+                                      panel.grid.major=element_blank(),
+                                      panel.grid.minor=element_blank())  
+
+binomial_smooth <- function(...) {
+  geom_smooth(method = "glm", method.args = list(family = "binomial"), ...)
+}
+
+
+df <- read_csv('output/results_rbf.csv')
+
+df <- df %>%
+  group_by(set_id, n, density, regularity, clustering, arrangement) %>%
+  mutate(count = sum(touched)) %>%
+  mutate(abs_err=abs(n-count)) %>%
+  mutate(correct = (1*(abs_err == 0)))
+
+```
+
+
+
+```{r}
+
+
+
+
+ggplot(data=df, aes(x=n, y=count)) +
+      geom_abline() +
+      stat_summary() +
+      coord_cartesian(ylim=c(min(df$count), max(df$n)), xlim=c(min(df$count), max(df$n))) +
+      paper_theme
+
+
+ggplot(data=df, aes(x=n, y=abs_err)) +
+      stat_summary() +
+      paper_theme +
+      labs(x="Number", y="Counting error")
+
+ggplot(data=df, aes(x=regularity, y=abs_err)) +
+      stat_summary() +
+      paper_theme +
+      labs(x="Regularity", y="Counting error")
+
+
+
+ggplot(data=df, aes(x=density, y=abs_err)) +
+      stat_summary() +
+      paper_theme +
+        labs(x="Density", y="Counting error")
+
+ggplot(data=df, aes(x=clustering, y=abs_err)) +
+      stat_summary() +
+      paper_theme +
+        labs(x="Clustering", y="Counting error")
+
+
+ggplot(data=df, aes(x=arrangement, y=abs_err)) +
+      stat_summary() +
+      paper_theme +
+        labs(x="Arrangement", y="Counting error")
+
+
+
+
+```
+
+```{r}
+
+
+ggplot(data=df, aes(x=n, y=correct)) +
+      stat_summary() +
+      paper_theme +
+      labs(x="Number", y="Correct")
+
+ggplot(data=df, aes(x=regularity, y=correct)) +
+      stat_summary() +
+      paper_theme +
+      labs(x="Regularity", y="Correct")
+
+
+
+ggplot(data=df, aes(x=density, y=correct)) +
+      stat_summary() +
+      paper_theme +
+        labs(x="Density", y="Correct")
+
+ggplot(data=df, aes(x=clustering, y=correct)) +
+      stat_summary() +
+      paper_theme +
+        labs(x="Clustering", y="Correct")
+
+
+ggplot(data=df, aes(x=arrangement, y=correct)) +
+      stat_summary() +
+      paper_theme +
+        labs(x="Arrangement", y="Correct")
+
+```
+
+
+```
