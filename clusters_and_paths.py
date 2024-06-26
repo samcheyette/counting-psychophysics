@@ -102,7 +102,6 @@ def pick_next_cluster(memory_model, centroids, current_cluster):
     return next_cluster
 
 def find_path_through_clusters(points, clusters, memory_model):
-    """Find a path through clusters using a memory model to simulate imperfect memory."""
     centroids = np.array([np.mean(points[cluster], axis=0) for cluster in clusters])
 
     memory_model.initialize(centroids)
@@ -172,7 +171,6 @@ def animate_clusters(points, clusters, cluster_path, full_path, path_memory):
         ax.set_xlim(-0.1, 1.1)
         ax.set_ylim(-0.1, 1.1)
 
-        # Plot clusters and their centroids
         for idx, cluster in enumerate(clusters):
             cluster_points = points[cluster]
             ax.scatter(cluster_points[:, 0], cluster_points[:, 1], color=colors(idx), label=f'Cluster {idx + 1}')
@@ -181,7 +179,6 @@ def animate_clusters(points, clusters, cluster_path, full_path, path_memory):
             circle = plt.Circle(centroid, radius, color=colors(idx), fill=False, linestyle='--')
             ax.add_artist(circle)
 
-        # Plot the visited regions
         xx, yy, Z = path_memory[frame]
         if Z.min() != Z.max():
             levels = np.linspace(Z.min(), Z.max(), 3)
@@ -194,7 +191,6 @@ def animate_clusters(points, clusters, cluster_path, full_path, path_memory):
             else:
                 ax.contourf(xx, yy, Z, alpha=0.3, levels=levels, colors=["red", "red"])
 
-        # Plot the path
         if frame > 0:
             ax.plot(full_path_points[:frame+1, 0], full_path_points[:frame+1, 1], 'k--')
         
@@ -203,8 +199,7 @@ def animate_clusters(points, clusters, cluster_path, full_path, path_memory):
     ani = animation.FuncAnimation(fig, update, frames=len(path_memory), init_func=init, blit=False, interval=400, repeat=False)
     plt.show()
 
-# Example usage
-points = np.random.rand(20, 2)  # 20 points with x, y coordinates between 0 and 1
+points = np.random.rand(20, 2) 
 N = 5
 epsilon = 0.5
 
