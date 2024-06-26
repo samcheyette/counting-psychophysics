@@ -146,7 +146,7 @@ def find_path_through_clusters(points, clusters, memory_model):
             else:
                 Z = np.ones_like(xx)
 
-        for _ in clusters[next_cluster]:  # Repeat the boundary for the number of points in the cluster
+        for _ in clusters[next_cluster]: 
             path_memory.append((xx, yy, Z))
 
     full_path = []
@@ -185,7 +185,7 @@ def animate_clusters(points, clusters, cluster_path, full_path, path_memory):
             ax.contourf(xx, yy, Z, alpha=0.3, levels=levels, colors=["red", "blue"])
 
         else:
-            levels = [Z.min()-0.001, Z.max()+0.001]  # Handle the case where Z has constant values
+            levels = [Z.min()-0.001, Z.max()+0.001] 
             if Z.max() == 0:
                 ax.contourf(xx, yy, Z, alpha=0.3, levels=levels, colors=["blue", "blue"])
             else:
