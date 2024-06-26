@@ -25,6 +25,7 @@ def update_svm(points, true_labels, cost_param ):
 
     svm = SVC(kernel=kernel, C=cost_param, probability=True)
     svm.fit(points, true_labels)
+
     return svm
 
 
@@ -257,9 +258,9 @@ def update(frame):
 
 ani = animation.FuncAnimation(fig, update, frames=total_frames, init_func=init,
                               blit=False, interval=400, repeat=False)
-ani.save(f'output/fixation_animation_{kernel}.gif', writer='pillow', fps=4)
+# ani.save(f'output/fixation_animation_{kernel}.gif', writer='pillow', fps=4)
 
-plt.show()
+# plt.show()
 
 
 
