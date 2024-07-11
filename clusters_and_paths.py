@@ -1,6 +1,8 @@
-import numpy as np
-import matplotlib.pyplot as plt
+import matplotlib
 import matplotlib.animation as animation
+import matplotlib.pyplot as plt
+import numpy as np
+from sklearn.mixture import BayesianGaussianMixture
 from sklearn.neighbors import KNeighborsClassifier
 
 
@@ -35,7 +37,9 @@ class MemoryModel:
         self.recent_memory.append(cluster_id)
 
         if len(self.recent_memory) > self.memory_size:
-            self.recent_memory.pop(0)
+            forgotten_item = self.recent_memory.pop(0)
+            print("Forgot " + str(forgotten_item))
+
 
         if len(np.unique(self.labels)) > 1:
             self.clf.fit(self.centroids, self.labels)
@@ -64,30 +68,84 @@ def calculate_distances(points):
     
     return distance_matrix
 
-def find_clusters(points, N, epsilon):
-    distance_matrix = calculate_distances(points)
-    D_average = np.mean(distance_matrix[np.triu_indices_from(distance_matrix, k=1)])
-    threshold_distance = epsilon * D_average
-    
+# def find_clusters(points, N, epsilon):
+#     distance_matrix = calculate_distances(points)
+#     D_average = np.mean(distance_matrix[np.triu_indices_from(distance_matrix, k=1)])
+
+#     threshold_distance = epsilon * D_average
+
+#     clusters = []
+#     visited = set()
+
+#     for i in range(len(points)):
+#         if i in visited:
+#             continue
+
+#         cluster = [i]
+#         visited.add(i)
+
+#         for j in range(len(points)):
+#             if j not in visited and len(cluster) < N:
+#                 if all(distance_matrix[j][k] < threshold_distance for k in cluster):
+#                     cluster.append(j)
+#                     visited.add(j)
+
+#         clusters.append(cluster)
+
+#     return clusters
+
+def find_clusters_DPMM(points, N, epsilon):
+
+    DPMM = BayesianGaussianMixture(
+        n_components=N,
+        weight_concentration_prior_type='dirichlet_process',
+        weight_concentration_prior=10e4
+    )
+
+    DPMM.fit(points)
+    labels = DPMM.predict(points)
+
     clusters = []
-    visited = set()
-    
-    for i in range(len(points)):
-        if i in visited:
-            continue
-        
-        cluster = [i]
-        visited.add(i)
-        
-        for j in range(len(points)):
-            if j not in visited and len(cluster) < N:
-                if all(distance_matrix[j][k] < threshold_distance for k in cluster):
-                    cluster.append(j)
-                    visited.add(j)
-        
-        clusters.append(cluster)
-    
-    return clusters
+    for l in np.unique(labels):
+        clust = np.where(labels==l)[0].tolist()
+        clusters.append(clust)
+
+    # print(labels)
+
+    return clusters, DPMM
+
+# def find_clusters(points, N, epsilon):
+#     # from pgsm import
+#     from pgsm.distributions.mvn import MultivariateNormalDistribution
+#     from pgsm.partition_priors import DirichletProcessPartitionPrior
+#     from pgsm.mcmc.collapsed_gibbs import CollapsedGibbsSampler
+#     from pgsm.mcmc.particle_gibbs_split_merge import ParticleGibbsSplitMergeSampler
+#     from pgsm.mcmc.split_merge_setup import UniformSplitMergeSetupKernel
+#     from pgsm.mcmc.concentration import GammaPriorConcentrationSampler
+#     dim = 2
+#     init_concentration = 1.0
+
+#     partition_prior = DirichletProcessPartitionPrior(init_concentration)
+#     dist = MultivariateNormalDistribution(dim)
+#     DPMM = CollapsedGibbsSampler(dist, partition_prior)
+
+
+#     setup_kernel = UniformSplitMergeSetupKernel(points, dist, partition_prior)
+#     pgsm_sampler = ParticleGibbsSplitMergeSampler.create_from_dist(dist, partition_prior, setup_kernel, num_anchors=2)
+#     conc_sampler = GammaPriorConcentrationSampler(1, 1)
+#     n_points = points.shape[0]
+#     clustering = np.zeros(n_points)
+
+#     for it in range(10000):
+#         if it % 10 == 0:
+#             print(it)
+#             print(clustering)
+#         # clustering = DPMM.sample(clustering, points)
+#         num_clusters = len(np.unique(clustering))
+#         pgsm_sampler.sample(clustering, points)
+#         partition_prior.alpha = conc_sampler.sample(partition_prior.alpha, num_clusters, n_points)
+#     import pdb; pdb.set_trace()
+
 
 def pick_next_cluster(memory_model, centroids, current_cluster):
     distances = np.linalg.norm(centroids - centroids[current_cluster], axis=1)
@@ -158,7 +216,7 @@ def find_path_through_clusters(points, clusters, memory_model):
 def animate_clusters(points, clusters, cluster_path, full_path, path_memory):
     """Create an animation of the clustering process."""
     fig, ax = plt.subplots()
-    colors = plt.cm.get_cmap('tab10', len(clusters))
+    colors = matplotlib.colormaps.get_cmap('tab10').resampled(len(clusters))  # fix mpl deprecation
     full_path_points = points[full_path]
 
     def init():
@@ -196,20 +254,20 @@ def animate_clusters(points, clusters, cluster_path, full_path, path_memory):
         
         return ax,
 
-    ani = animation.FuncAnimation(fig, update, frames=len(path_memory), init_func=init, blit=False, interval=400, repeat=False)
+    ani = animation.FuncAnimation(fig, update, frames=len(path_memory), init_func=init, blit=False, interval=500, repeat=True)
     plt.show()
 
-points = np.random.rand(20, 2) 
-N = 5
+points = np.random.rand(20, 2)
+N = 10                          # sklearn's implementation uses N as the max # of clusters
 epsilon = 0.5
 
-clusters = find_clusters(points, N, epsilon)
+clusters, _ = find_clusters_DPMM(points, N, epsilon)
 print("Clusters:", clusters)
 
 memory_model = MemoryModel(n_neighbors=2, memory_size=4)
 cluster_path, full_path, path_memory = find_path_through_clusters(points, clusters, memory_model)
 
 
-print(sorted(full_path))
+# print(sorted(full_path))
 
 animate_clusters(points, clusters, cluster_path, full_path, path_memory)
