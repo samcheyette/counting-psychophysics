@@ -1,4 +1,6 @@
 import matplotlib
+from copy import deepcopy
+from scipy.stats import multivariate_normal
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import numpy as np
@@ -106,13 +108,15 @@ def find_clusters_DPMM(points, N, epsilon):
     labels = DPMM.predict(points)
 
     clusters = []
-    for l in np.unique(labels):
+    unique_labels = np.unique(labels)
+    for l in unique_labels:
         clust = np.where(labels==l)[0].tolist()
         clusters.append(clust)
 
-    # print(labels)
+    means = DPMM.means_[unique_labels]
+    covs = DPMM.covariances_[unique_labels]
 
-    return clusters, DPMM
+    return clusters, means, covs, DPMM
 
 # def find_clusters(points, N, epsilon):
 #     # from pgsm import
@@ -257,17 +261,89 @@ def animate_clusters(points, clusters, cluster_path, full_path, path_memory):
     ani = animation.FuncAnimation(fig, update, frames=len(path_memory), init_func=init, blit=False, interval=500, repeat=True)
     plt.show()
 
+def animate_reassignment(points, clusters, cluster_means, cluster_covs):
+    fig, ax = plt.subplots()
+    colors = matplotlib.colormaps.get_cmap('tab10').resampled(len(clusters))  # fix mpl deprecation
+
+    def init():
+        ax.set_xlim(-0.1, 1.1)
+        ax.set_ylim(-0.1, 1.1)
+        return ax,
+
+    def update(frame):
+        ax.clear()
+        ax.set_xlim(-0.1, 1.1)
+        ax.set_ylim(-0.1, 1.1)
+
+        pt = np.random.randint(points.shape[0])
+
+        new_assn = resample_point_cluster(pt, cluster_means, cluster_covs)
+        # DOES NOT YET RECALCULATE MEAN AND COV
+
+        recluster, _, _ = reassign_point(pt, new_assn, clusters)
+        print(recluster)
+
+        for idx, cluster in enumerate(recluster):
+            cluster_points = points[cluster]
+            ax.scatter(cluster_points[:, 0], cluster_points[:, 1], color=colors(idx), label=f'Cluster {idx + 1}')
+            centroid = np.mean(cluster_points, axis=0)
+            radius = np.max(np.linalg.norm(cluster_points - centroid, axis=1))
+            circle = plt.Circle(centroid, radius, color=colors(idx), fill=False, linestyle='--')
+            ax.add_artist(circle)
+
+        return ax,
+
+    ani = animation.FuncAnimation(fig, update, frames=len(path_memory), init_func=init, blit=False, interval=500, repeat=True)
+    plt.show()
+
+
+def reassign_point(pt, new_cluster_num, clusters):
+    # import pdb; pdb.set_trace()
+
+    print(clusters)
+    clusters = deepcopy(clusters)
+    for c in clusters:
+        if pt in c:
+            break
+    else:
+        raise Exception('point in no cluster')
+    c.remove(pt)
+    new_cluster = clusters[new_cluster_num].copy()
+    new_cluster.append(pt)
+    clusters[new_cluster_num] = sorted(new_cluster)
+
+    cluster_means = []
+    cluster_covs = []
+    for c in clusters:
+        cluster_means.append(np.array(np.mean(points[c, 0]), np.mean(points[c, 1])))
+        cluster_covs.append(np.cov(points[c]))
+
+    return clusters, cluster_means, cluster_covs
+
+def resample_point_cluster(pt_num, cluster_means, cluster_covs):
+    pt = points[pt_num]
+    likelihoods = []
+    for mean, cov in zip(cluster_means, cluster_covs):
+        lik = multivariate_normal(mean, cov).pdf(pt)
+        likelihoods.append(lik)
+
+    likelihoods = np.array(likelihoods) / np.sum(likelihoods)
+
+    # print(likelihoods)
+    return np.argmax(np.random.multinomial(1, likelihoods))
+
+
 points = np.random.rand(20, 2)
 N = 10                          # sklearn's implementation uses N as the max # of clusters
 epsilon = 0.5
 
-clusters, _ = find_clusters_DPMM(points, N, epsilon)
-print("Clusters:", clusters)
+cluster_members, cluster_means, cluster_covs, DPMM = find_clusters_DPMM(points, N, epsilon)
+# print("Clusters:", clusters)
 
 memory_model = MemoryModel(n_neighbors=2, memory_size=4)
-cluster_path, full_path, path_memory = find_path_through_clusters(points, clusters, memory_model)
-
+cluster_path, full_path, path_memory = find_path_through_clusters(points, cluster_members, memory_model)
 
 # print(sorted(full_path))
+# animate_clusters(points, clusters, cluster_path, full_path, path_memory)
 
-animate_clusters(points, clusters, cluster_path, full_path, path_memory)
+animate_reassignment(points, cluster_members, cluster_means, cluster_covs)
