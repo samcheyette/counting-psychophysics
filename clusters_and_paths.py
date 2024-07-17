@@ -261,40 +261,6 @@ def animate_clusters(points, clusters, cluster_path, full_path, path_memory):
     ani = animation.FuncAnimation(fig, update, frames=len(path_memory), init_func=init, blit=False, interval=500, repeat=True)
     plt.show()
 
-def animate_reassignment(points, clusters, cluster_means, cluster_covs):
-    fig, ax = plt.subplots()
-    colors = matplotlib.colormaps.get_cmap('tab10').resampled(len(clusters))  # fix mpl deprecation
-
-    def init():
-        ax.set_xlim(-0.1, 1.1)
-        ax.set_ylim(-0.1, 1.1)
-        return ax,
-
-    def update(frame):
-        ax.clear()
-        ax.set_xlim(-0.1, 1.1)
-        ax.set_ylim(-0.1, 1.1)
-
-        pt = np.random.randint(points.shape[0])
-
-        new_assn = resample_point_cluster(pt, cluster_means, cluster_covs)
-        # DOES NOT YET RECALCULATE MEAN AND COV
-
-        recluster, _, _ = reassign_point(pt, new_assn, clusters)
-        print(recluster)
-
-        for idx, cluster in enumerate(recluster):
-            cluster_points = points[cluster]
-            ax.scatter(cluster_points[:, 0], cluster_points[:, 1], color=colors(idx), label=f'Cluster {idx + 1}')
-            centroid = np.mean(cluster_points, axis=0)
-            radius = np.max(np.linalg.norm(cluster_points - centroid, axis=1))
-            circle = plt.Circle(centroid, radius, color=colors(idx), fill=False, linestyle='--')
-            ax.add_artist(circle)
-
-        return ax,
-
-    ani = animation.FuncAnimation(fig, update, frames=len(path_memory), init_func=init, blit=False, interval=500, repeat=True)
-    plt.show()
 
 
 def reassign_point(pt, new_cluster_num, clusters):
@@ -332,18 +298,59 @@ def resample_point_cluster(pt_num, cluster_means, cluster_covs):
     # print(likelihoods)
     return np.argmax(np.random.multinomial(1, likelihoods))
 
+    
 
-points = np.random.rand(20, 2)
-N = 10                          # sklearn's implementation uses N as the max # of clusters
-epsilon = 0.5
+def animate_reassignment(points, clusters, cluster_means, cluster_covs):
+    fig, ax = plt.subplots()
+    colors = matplotlib.colormaps.get_cmap('tab10').resampled(len(clusters))  # fix mpl deprecation
 
-cluster_members, cluster_means, cluster_covs, DPMM = find_clusters_DPMM(points, N, epsilon)
-# print("Clusters:", clusters)
+    def init():
+        ax.set_xlim(-0.1, 1.1)
+        ax.set_ylim(-0.1, 1.1)
+        return ax,
 
-memory_model = MemoryModel(n_neighbors=2, memory_size=4)
-cluster_path, full_path, path_memory = find_path_through_clusters(points, cluster_members, memory_model)
+    def update(frame):
+        ax.clear()
+        ax.set_xlim(-0.1, 1.1)
+        ax.set_ylim(-0.1, 1.1)
 
-# print(sorted(full_path))
-# animate_clusters(points, clusters, cluster_path, full_path, path_memory)
+        pt = np.random.randint(points.shape[0])
 
-animate_reassignment(points, cluster_members, cluster_means, cluster_covs)
+        new_assn = resample_point_cluster(pt, cluster_means, cluster_covs)
+        # DOES NOT YET RECALCULATE MEAN AND COV
+
+        recluster, _, _ = reassign_point(pt, new_assn, clusters)
+        print(recluster)
+
+        for idx, cluster in enumerate(recluster):
+            cluster_points = points[cluster]
+            ax.scatter(cluster_points[:, 0], cluster_points[:, 1], color=colors(idx), label=f'Cluster {idx + 1}')
+            centroid = np.mean(cluster_points, axis=0)
+            radius = np.max(np.linalg.norm(cluster_points - centroid, axis=1))
+            circle = plt.Circle(centroid, radius, color=colors(idx), fill=False, linestyle='--')
+            ax.add_artist(circle)
+
+        return ax,
+
+    ani = animation.FuncAnimation(fig, update, frames=len(path_memory), init_func=init, blit=False, interval=500, repeat=True)
+    plt.show()
+
+
+
+
+if __name__ == "__main__":
+
+    points = np.random.rand(20, 2)
+    N = 10                          # sklearn's implementation uses N as the max # of clusters
+    epsilon = 0.5
+
+    cluster_members, cluster_means, cluster_covs, DPMM = find_clusters_DPMM(points, N, epsilon)
+    # print("Clusters:", clusters)
+
+    memory_model = MemoryModel(n_neighbors=2, memory_size=4)
+    cluster_path, full_path, path_memory = find_path_through_clusters(points, cluster_members, memory_model)
+
+    # print(sorted(full_path))
+    # animate_clusters(points, clusters, cluster_path, full_path, path_memory)
+
+    animate_reassignment(points, cluster_members, cluster_means, cluster_covs)
