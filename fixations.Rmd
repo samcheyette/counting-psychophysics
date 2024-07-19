@@ -44,58 +44,22 @@ binomial_smooth <- function(...) {
 }
 
 
-df <- read_csv('output/results_rbf.csv')
-
-df <- df %>%
-  group_by(set_id, n, density, regularity, clustering, arrangement) %>%
-  mutate(count = sum(touched)) %>%
-  mutate(abs_err=abs(n-count)) %>%
-  mutate(correct = (1*(abs_err == 0)))
-
-```
+df <- read_csv('output/fixation_model_output.csv')
 
 
+df_points <- df %>%
+             filter(fixation_number == 0)
 
-```{r}
+df_sub <- df %>%
+          filter(current_fixation_idx == point_idx)
 
-
-
-
-ggplot(data=df, aes(x=n, y=count)) +
-      geom_abline() +
-      stat_summary() +
-      coord_cartesian(ylim=c(min(df$count), max(df$n)), xlim=c(min(df$count), max(df$n))) +
-      paper_theme
-
-
-ggplot(data=df, aes(x=n, y=abs_err)) +
-      stat_summary() +
-      paper_theme +
-      labs(x="Number", y="Counting error")
-
-ggplot(data=df, aes(x=regularity, y=abs_err)) +
-      stat_summary() +
-      paper_theme +
-      labs(x="Regularity", y="Counting error")
-
-
-
-ggplot(data=df, aes(x=density, y=abs_err)) +
-      stat_summary() +
-      paper_theme +
-        labs(x="Density", y="Counting error")
-
-ggplot(data=df, aes(x=clustering, y=abs_err)) +
-      stat_summary() +
-      paper_theme +
-        labs(x="Clustering", y="Counting error")
-
-
-ggplot(data=df, aes(x=arrangement, y=abs_err)) +
-      stat_summary() +
-      paper_theme +
-        labs(x="Arrangement", y="Counting error")
-
+df_summary <- df_sub %>%
+              group_by(id) %>%
+              top_n(n=1, wt=fixation_number) %>%
+              mutate(count=fixation_number+1) %>%
+              mutate(err=(count - total_points)) %>%
+              mutate(abs_err = abs(err)) %>%
+              mutate(correct=1*(count==total_points))
 
 
 
@@ -104,35 +68,105 @@ ggplot(data=df, aes(x=arrangement, y=abs_err)) +
 ```{r}
 
 
-ggplot(data=df, aes(x=n, y=correct)) +
-      stat_summary() +
-      paper_theme +
-      labs(x="Number", y="Correct")
+ggplot(data=df_summary, aes(x=n_true_clusters, y=abs_err)) +
+      stat_summary(fun="mean", geom="point") +
+      stat_summary(fun="mean", geom="line") +
+      stat_summary(fun.data="mean_se", geom="errorbar", width=0.05) +
+      #geom_jitter(width=0.2,height=0.05, alpha=0.1) +
+        paper_theme
 
-ggplot(data=df, aes(x=regularity, y=correct)) +
-      stat_summary() +
-      paper_theme +
-      labs(x="Regularity", y="Correct")
+ggplot(data=df_summary, aes(x=total_points, y=abs_err)) +
+      stat_summary(fun="mean", geom="point") +
+      stat_summary(fun="mean", geom="line") +
 
-
-
-ggplot(data=df, aes(x=density, y=correct)) +
-      stat_summary() +
-      paper_theme +
-        labs(x="Density", y="Correct")
-
-ggplot(data=df, aes(x=clustering, y=correct)) +
-      stat_summary() +
-      paper_theme +
-        labs(x="Clustering", y="Correct")
+        geom_jitter(width=0.2,height=0.05, alpha=0.1) +
+        paper_theme
 
 
-ggplot(data=df, aes(x=arrangement, y=correct)) +
-      stat_summary() +
-      paper_theme +
-        labs(x="Arrangement", y="Correct")
+
+ggplot(data=df_summary, aes(x=total_points, y=abs_err, color=factor(n_true_clusters))) +
+      stat_summary(fun="mean", geom="point") +
+      stat_summary(fun="mean", geom="line") +
+      stat_summary(fun.data="mean_se", geom="errorbar", width=0.05) +
+#        geom_jitter(width=0.2,height=0.05, alpha=0.1) +
+        paper_theme
+
+
+ggplot(data=df_summary, aes(x=total_points, y=count)) +
+        geom_abline(linetype="dotted")+
+        geom_jitter(width=0.2,height=0.05, alpha=0.1) +
+
+      stat_summary(fun="mean", geom="point") +
+      stat_summary(fun="mean", geom="line") +
+      stat_summary(fun.data="mean_se", geom="errorbar", width=0.05) +
+        paper_theme
+
+
+
+
+ggplot(data=df_summary, aes(x=total_points, y=err, color=factor(n_true_clusters), group=n_true_clusters)) +
+        geom_jitter(width=0.2,height=0.05, alpha=0.1) +
+
+      stat_summary(fun="mean", geom="point") +
+      stat_summary(fun="mean", geom="line") +
+      stat_summary(fun.data="mean_se", geom="errorbar", width=0.05) +
+        paper_theme
+
+
+ggplot(data=df_summary, aes(x=total_points, y=correct, color=factor(n_true_clusters), group=n_true_clusters)) +
+        geom_jitter(width=0.2,height=0.05, alpha=0.1) +
+
+      stat_summary(fun="mean", geom="point") +
+      stat_summary(fun="mean", geom="line") +
+      stat_summary(fun.data="mean_se", geom="errorbar", width=0.05) +
+        paper_theme
+
 
 ```
+
+
+```{r, fig.width=8, fig.height=3}
+
+
+ggplot(data=df_points %>% filter(id < 36)) +
+        geom_point(aes(x=x, y=y, color=factor(initial_cluster))) +
+        geom_path(data=df_sub %>% filter(id < 36), aes(x=current_x, y=current_y)) +
+        paper_theme +
+        facet_wrap(~n_true_clusters~id, nrow=3) +
+        paper_theme + theme(strip.text=element_blank(), axis.text.x=element_blank(), axis.text.y=element_blank()) +
+        guides(color="none")
+
+
+
+```
+
+
+
+```{r}
+func <- function(n, alpha) {
+  return (1-(1/n)**alpha)
+}
+
+n <- seq.int(1,10)
+alpha <- seq.int(0,0.4,by=0.1)
+
+l_n <- length(n)
+l_a <- length(alpha)
+n <- rep(n, times=l_a)
+alpha <- rep(alpha, each=l_n)
+
+
+
+df <- data.frame(n, alpha) %>%
+      rowwise() %>%
+      mutate(p=func(n, alpha))
+
+ggplot(data=df, aes(x=n, y=p, color=alpha, group=alpha)) +
+      geom_line() +
+      paper_theme +
+      scale_color_gradientn(colors=c("blue","red","orange"))
+
+
 
 
 ```
